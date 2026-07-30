@@ -1,38 +1,33 @@
-from pyspark.sql import SparkSession
 from src.Question3 import utils
+
 
 def main():
 
-    spark = SparkSession.builder \
-        .appName("Question3") \
-        .enableHiveSupport() \
-        .getOrCreate()
-
     log_df = utils.create_log_df(spark)
 
-    print("\nOriginal Data")
-    log_df.show()
+    print("Original Data")
+    display(log_df)
 
     renamed_df = utils.rename_columns_dynamic(log_df)
 
-    print("\nRenamed Columns")
-    renamed_df.show()
+    print("Renamed Columns")
+    display(renamed_df)
 
-    print("\nLast 7 Days Activity")
-    utils.last_7_days_activity(renamed_df).show()
+    print("User Activity in Last 7 Days")
+    display(utils.last_7_days_activity(renamed_df))
 
-    converted_df = utils.convert_login_date(renamed_df)
+    login_df = utils.convert_login_date(renamed_df)
 
-    print("\nLogin Date")
-    converted_df.show()
+    print("Login Date")
+    display(login_df)
 
-    utils.write_csv(converted_df, "output/login_csv")
+    utils.write_csv(login_df, "/Volumes/training_catalog/example/outputs")
 
     spark.sql("CREATE DATABASE IF NOT EXISTS user")
 
-    utils.write_managed_table(converted_df)
+    utils.write_managed_table(login_df)
 
-    spark.stop()
+    print("Question 3 completed successfully.")
 
 
 if __name__ == "__main__":

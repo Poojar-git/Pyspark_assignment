@@ -10,9 +10,7 @@ from pyspark.sql.functions import (
 )
 
 
-# -------------------------
 # Schema
-# -------------------------
 
 def get_schema():
 
@@ -24,9 +22,7 @@ def get_schema():
     ])
 
 
-# -------------------------
 # Sample Data
-# -------------------------
 
 def get_log_data():
 
@@ -42,21 +38,17 @@ def get_log_data():
     ]
 
 
-# -------------------------
 # Create DataFrame
-# -------------------------
 
 def create_log_df(spark):
 
     return spark.createDataFrame(
         get_log_data(),
-        schema=get_schema()
+        get_schema()
     )
 
 
-# -------------------------
 # Rename Columns
-# -------------------------
 
 def rename_columns_dynamic(df):
 
@@ -73,28 +65,23 @@ def rename_columns_dynamic(df):
     return df
 
 
-# -------------------------
 # Last 7 Days Activity
-# -------------------------
 
 def last_7_days_activity(df):
 
     df = df.withColumn(
         "time_stamp",
-        to_timestamp(col("time_stamp"))
+        to_timestamp("time_stamp")
     )
 
-    return df.filter(
-        col("time_stamp") >= date_sub(current_date(), 7)
-    ).groupBy("user_id") \
-     .agg(
-        count("*").alias("action_count")
-     )
+    return (
+        df.filter(col("time_stamp") >= date_sub(current_date(), 7))
+          .groupBy("user_id")
+          .agg(count("*").alias("action_count"))
+    )
 
 
-# -------------------------
 # Convert Timestamp
-# -------------------------
 
 def convert_login_date(df):
 
@@ -104,9 +91,7 @@ def convert_login_date(df):
     )
 
 
-# -------------------------
 # Write CSV
-# -------------------------
 
 def write_csv(df, path):
 
@@ -118,9 +103,7 @@ def write_csv(df, path):
         .csv(path)
 
 
-# -------------------------
 # Managed Table
-# -------------------------
 
 def write_managed_table(df):
 

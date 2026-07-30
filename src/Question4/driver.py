@@ -1,48 +1,67 @@
-from pyspark.sql import SparkSession
-from src.Question4.util import *
+from src.Question4 import utils
 
 
 def main():
 
-    spark = SparkSession.builder \
-        .appName("Assignment Question 4") \
-        .enableHiveSupport() \
-        .getOrCreate()
+    # Read JSON file
+    employee_df = utils.read_json_dynamic(
+        spark,
+        "/Volumes/training_catalog/pyspark/dataset/nested_json_file.json"
+    )
 
-    # 1 Read JSON
-    df = read_json_dynamic(spark, "data/employee.json")
-    df.show()
+    print("Original Data")
+    display(employee_df)
 
-    # 2 Flatten
-    flat_df = flatten_df(df)
+    # Flatten DataFrame
+    flat_df = utils.flatten_df(employee_df)
 
-    # 3 Count difference
-    print("Original count:", record_count(df))
-    print("Flatten count:", record_count(flat_df))
+    print("Flattened Data")
+    display(flat_df)
 
-    # 4 explode demos
-    explode_demo(df, "skills").show()
-    explode_outer_demo(df, "skills").show()
-    posexplode_demo(df, "skills").show()
+    # Record Count
+    print("Original Record Count :", utils.record_count(employee_df))
+    print("Flattened Record Count :", utils.record_count(flat_df))
 
-    # 5 filter
-    flat_df = filter_id(flat_df)
+    # explode()
+    print("explode()")
+    display(utils.explode_demo(employee_df))
 
-    # 6 rename
-    flat_df = rename_columns_snake(flat_df)
+    # explode_outer()
+    print("explode_outer()")
+    display(utils.explode_outer_demo(employee_df))
 
-    # 7 load date
-    flat_df = add_load_date(flat_df)
+    # posexplode()
+    print("posexplode()")
+    display(utils.posexplode_demo(employee_df))
 
-    # 8 partition columns
-    flat_df = add_partition_columns(flat_df)
+    # Filter id
+    filtered_df = utils.filter_id(flat_df)
 
-    flat_df.show()
+    print("Filtered Data")
+    display(filtered_df)
 
-    # 9 write
-    write_partitioned_table(flat_df, spark)
+    # Rename columns
+    renamed_df = utils.rename_columns_snake(filtered_df)
 
-    spark.stop()
+    print("Snake Case Columns")
+    display(renamed_df)
+
+    # Add load date
+    load_df = utils.add_load_date(renamed_df)
+
+    # Add year, month and day
+    final_df = utils.add_partition_columns(load_df)
+
+    print("Final Data")
+    display(final_df)
+
+    # Create Database
+    spark.sql("CREATE DATABASE IF NOT EXISTS employee")
+
+    # Write table
+    utils.write_partitioned_table(final_df)
+
+    print("Question 4 Completed Successfully")
 
 
 if __name__ == "__main__":

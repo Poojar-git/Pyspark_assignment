@@ -1,100 +1,222 @@
-from pyspark.sql.functions import col, explode, explode_outer, posexplode, current_date
-from pyspark.sql.types import *
 import re
-import os
 
-os.environ["PYSPARK_PYTHON"] = r"D:\Diggibytes\spark\.venv\Scripts\python.exe"
-os.environ["PYSPARK_DRIVER_PYTHON"] = r"D:\Diggibytes\spark\.venv\Scripts\python.exe"
+from pyspark.sql.functions import (
+    col,
+    explode,
+    explode_outer,
+    posexplode,
+    current_date,
+    year,
+    month,
+    dayofmonth
+)
 
 
-
-# Read JSON dynamically
+# -----------------------------------
+# Read JSON File Dynamically
+# -----------------------------------
 
 def read_json_dynamic(spark, path):
-    return spark.read.option("multiline", True).json(path)
+
+    return (
+        spark.read
+        .option("multiline", "true")
+        .json(path)
+    )
 
 
-# Flatten JSON (generic)
+# -----------------------------------
+# Flatten Nested JSON
+# -----------------------------------
+
 def flatten_df(df):
 
-    flat_cols = [c[0] for c in df.dtypes if c[1] != 'array' and not c[1].startswith('struct')]
-    nested_cols = [c[0] for c in df.dtypes if c[1].startswith('struct')]
-    array_cols = [c[0] for c in df.dtypes if c[1].startswith('array')]
+    return (
+        df
+        .withColumn(
+            "employee",
+            explode("employees")
+        )
+        .select(
+            col("id"),
+            col("properties.name")
+            .alias("companyName"),
 
-    # Flatten struct
-    while len(nested_cols) > 0:
-        col_name = nested_cols.pop()
-        expanded = [col(col_name + '.' + k).alias(col_name + '_' + k)
-                    for k in df.select(col_name + '.*').columns]
+            col("properties.storeSize")
+            .alias("storeSize"),
 
-        df = df.select("*", *expanded).drop(col_name)
+            col("employee.empId")
+            .alias("employeeId"),
 
-        nested_cols = [c[0] for c in df.dtypes if c[1].startswith('struct')]
-
-    # Explode arrays
-    for col_name in array_cols:
-        df = df.withColumn(col_name, explode_outer(col(col_name)))
-
-    return df
+            col("employee.empName")
+            .alias("employeeName")
+        )
+    )
 
 
-# Count difference
+# -----------------------------------
+# Record Count
+# -----------------------------------
+
 def record_count(df):
+
     return df.count()
 
 
+# -----------------------------------
+# explode()
+# -----------------------------------
 
-# explode comparison
-def explode_demo(df, column):
-    return df.select(explode(col(column)))
+def explode_demo(df):
+
+    return (
+        df
+        .select(
+            "id",
+            explode("employees")
+            .alias("employee")
+        )
+    )
 
 
-def explode_outer_demo(df, column):
-    return df.select(explode_outer(col(column)))
+# -----------------------------------
+# explode_outer()
+# -----------------------------------
+
+def explode_outer_demo(df):
+
+    return (
+        df
+        .select(
+            "id",
+            explode_outer("employees")
+            .alias("employee")
+        )
+    )
 
 
-def posexplode_demo(df, column):
-    return df.select(posexplode(col(column)))
+# -----------------------------------
+# posexplode()
+# -----------------------------------
+
+def posexplode_demo(df):
+
+    return (
+        df
+        .select(
+            "id",
+            posexplode("employees")
+        )
+    )
 
 
-# Filter id
+# -----------------------------------
+# Filter Data
+# -----------------------------------
+
 def filter_id(df):
-    return df.filter(col("id") == "0001")
+
+    return (
+        df
+        .filter(
+            col("id") == 1001
+        )
+    )
 
 
-# Camel → snake case
+# -----------------------------------
+# Camel Case to Snake Case
+# -----------------------------------
+
 def camel_to_snake(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
+    return (
+        re.sub(
+            r'(?<!^)(?=[A-Z])',
+            '_',
+            name
+        )
+        .lower()
+    )
+
+
+# -----------------------------------
+# Rename Columns
+# -----------------------------------
 
 def rename_columns_snake(df):
-    for c in df.columns:
-        df = df.withColumnRenamed(c, camel_to_snake(c))
+
+    for column in df.columns:
+
+        df = df.withColumnRenamed(
+            column,
+            camel_to_snake(column)
+        )
+
     return df
 
 
-# Add load_date
+# -----------------------------------
+# Add Load Date
+# -----------------------------------
+
 def add_load_date(df):
-    return df.withColumn("load_date", current_date())
+
+    return (
+        df
+        .withColumn(
+            "load_date",
+            current_date()
+        )
+    )
 
 
-# Create year, month, day
+# -----------------------------------
+# Add Partition Columns
+# -----------------------------------
+
 def add_partition_columns(df):
-    return df \
-        .withColumn("year", col("load_date").substr(1, 4)) \
-        .withColumn("month", col("load_date").substr(6, 2)) \
-        .withColumn("day", col("load_date").substr(9, 2))
+
+    return (
+        df
+        .withColumn(
+            "year",
+            year("load_date")
+        )
+        .withColumn(
+            "month",
+            month("load_date")
+        )
+        .withColumn(
+            "day",
+            dayofmonth("load_date")
+        )
+    )
 
 
-# Write partitioned table
-def write_partitioned_table(df, spark):
+# -----------------------------------
+# Write JSON Table
+# Database : employee
+# Table    : employee_details
+# Partition: year, month, day
+# -----------------------------------
 
-    spark.sql("CREATE DATABASE IF NOT EXISTS employee")
+def write_partitioned_table(df):
 
-    df.write \
-        .format("json") \
-        .mode("overwrite") \
-        .partitionBy("year", "month", "day") \
-        .option("replaceWhere", "year IS NOT NULL") \
-        .saveAsTable("employee.employee_details")
+    (
+        df.write
+        .mode("overwrite")
+        .format("json")
+        .partitionBy(
+            "year",
+            "month",
+            "day"
+        )
+        .option(
+            "replaceWhere",
+            "year IS NOT NULL AND month IS NOT NULL AND day IS NOT NULL"
+        )
+        .save(
+            "/Volumes/training_catalog/pyspark/dataset/employee_details"
+        )
+    )

@@ -1,80 +1,93 @@
 from pyspark.sql.types import StructType, StructField, StringType
-from pyspark.sql.functions import udf
-from pyspark.sql import functions as F
-
-import os
-
-os.environ["PYSPARK_PYTHON"] = r"D:\Diggibytes\spark\.venv\Scripts\python.exe"
-os.environ["PYSPARK_DRIVER_PYTHON"] = r"D:\Diggibytes\spark\.venv\Scripts\python.exe"
+from pyspark.sql.functions import udf, col
 
 
+# -------------------------
 # Schema
+# -------------------------
 
 def get_schema():
+
     return StructType([
-        StructField("card_number", StringType(), True)
+        StructField("card_number", StringType(), False)
     ])
 
 
-# Different read methods
+# -------------------------
+# Sample Data
+# -------------------------
 
-def create_df_method1(spark):
-    data = [
+def get_card_data():
+
+    return [
         ("1234567891234567",),
         ("5678912345671234",),
         ("9123456712345678",),
         ("1234567812341122",),
         ("1234567812341342",)
     ]
-    return spark.createDataFrame(data, get_schema())
+
+
+# -------------------------
+# DataFrame Creation
+# -------------------------
+
+def create_df_method1(spark):
+
+    return spark.createDataFrame(
+        get_card_data(),
+        schema=get_schema()
+    )
 
 
 def create_df_method2(spark):
-    data = [
-        ("1234567891234567",),
-        ("5678912345671234",),
-        ("9123456712345678",),
-        ("1234567812341122",),
-        ("1234567812341342",)
-    ]
-    return spark.createDataFrame(data).toDF("card_number")
+
+    return spark.createDataFrame(
+        get_card_data(),
+        ["card_number"]
+    )
 
 
-
-# Partitions
+# -------------------------
+# Partition Functions
+# -------------------------
 
 def get_partition_count(df):
+
     return df.rdd.getNumPartitions()
 
 
-def increase_partitions(df, num):
-    return df.repartition(num)
+def increase_partitions(df, num_partitions):
+
+    return df.repartition(num_partitions)
 
 
-def decrease_partitions(df, num):
-    return df.coalesce(num)
+def decrease_partitions(df, num_partitions):
+
+    return df.coalesce(num_partitions)
 
 
+# -------------------------
+# UDF
+# -------------------------
 
-# UDF for masking
 def mask_card(card):
+
     if card:
         return "*" * (len(card) - 4) + card[-4:]
     return None
 
 
-def register_udf(spark):
-    return udf(mask_card, StringType())
+mask_udf = udf(mask_card, StringType())
 
 
+# -------------------------
+# Add Masked Column
+# -------------------------
 
-# Final output
-
-def add_masked_column(df, spark):
-
-    mask_udf = register_udf(spark)
+def add_masked_column(df):
 
     return df.withColumn(
         "masked_card_number",
-        mask_udf(F.col("card_number"))
+        mask_udf(col("card_number"))
     )

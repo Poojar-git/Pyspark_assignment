@@ -1,32 +1,19 @@
-from pyspark.sql import SparkSession
-from src.Question1 import utils
+from src.Question1.utils import *
 
-def main():
+purchase_df = create_purchase_df(spark)
+product_df = create_product_df(spark)
 
-    spark = SparkSession.builder \
-        .appName("Question1") \
-        .getOrCreate()
+print("Purchase Data")
+display(purchase_df)
 
-    purchase_df = utils.create_purchase_df(spark)
-    product_df = utils.create_product_df(spark)
+print("Product Data")
+display(product_df)
 
-    print("\nPurchase Data")
-    purchase_df.show()
+print("Customers only iphone13")
+display(customers_only_iphone13(purchase_df))
 
-    print("\nProduct Data")
-    product_df.show()
+print("Upgraded Customers")
+display(upgraded_customers(purchase_df))
 
-    print("\nCustomers who bought only iphone13")
-    utils.customers_only_iphone13(purchase_df).show()
-
-    print("\nCustomers upgraded from iphone13 to iphone14")
-    utils.upgraded_customers(purchase_df).show()
-
-    print("\nCustomers who bought all products")
-    utils.customers_all_products(purchase_df, product_df).show()
-
-    spark.stop()
-
-
-if __name__ == "__main__":
-    main()
+print("Customers bought all products")
+display(customers_all_products(purchase_df, product_df))
